@@ -1,0 +1,74 @@
+--- Procedure to create complete formulae for series which get converted from lower to higher frequency
+--- e.g. from monthly to quarterly -- BDS.Q.NL.N.EDB.F.NL1.N.PN = CONVERT(BDS.M.NL.N.EDB.F.NL1.N.PN, Q, DISCRETE, SUMMED)
+---      from quarterly to annual  -- BDS.A.ES.N.EDB._T.ES1.N.PN = CONVERT(BDS.Q.ES.N.EDB._T.ES1.N.PN, A, DISCRETE, SUMMED) 
+--------------------------------------------------------------------------------------------------------------------------------------------
+PROCEDURE $BDS_freq_conversion.createFormulaObjs
+ARGUMENT formulaDB, RefArea, baseName, formulaName, formulaSource, compilation, dependencies
+   LOCAL'lcs_new_freq = "FREQ="+RefArea
+   SET formulaName  = $setESAname(baseName, lcs_new_freq)
+   IF UPPER($getBDSsegment(baseName,BDS_INDIC)) EQ "EST" -- stock therefore end of period
+      SET formulaSource = "CONVERT(" + baseName + ", " + RefArea + ", DISCRETE, END)" 
+   ELSE -- flow therefore summed
+      SET formulaSource = "CONVERT(" + baseName + ", " + RefArea + ", DISCRETE, SUMMED)" 
+   END IF   
+   SET compilation = formulaSource
+   --SET dependencies = $extract_dependencies(formulaSource) 
+   $DEBUG_PRINT (STRING(formulaName) + " = " + STRING(formulaSource))
+END PROCEDURE -- $BDS_freq_conversion.createFormulaObjs
+--------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------
+FUNCTION $BDS_sect_aggregates.getNames
+ARGUMENT formulaDB, RefArea
+   TYPE "$BDS_sect_aggregates.getNames started at", NOW     
+ --  LOCAL'lcl_freq = {M,Q}
+--   LOCAL'lcl_adj = {N,S}
+    LOCAL'lcl_aggr = {BTF, , BTE, GTI, M_N, OTQ, RTU} 
+   LOCAL'lcl_transformation = {N}
+   LOCAL'lcl_unit = {PN}
+   LOCAL'lcl_return = {}
+   SET lcl_return = lcl_return + (  CROSSLIST({BDS},{M,Q,A},{FR},                   {S}, {EDB}, lcl_aggr, {FR1,FR2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{A},    {FR,CY,NL},             {N}, {EDB}, lcl_aggr, {FR1,CY1,NL1,FR2,CY2,NL2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{Q,A},  {HR},                   {N}, {EDB}, lcl_aggr, {HR1,HR2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{Q},    {AT},                   {N}, {EDB}, lcl_aggr, {AT1,AT2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{M,A,Q},{BE,FI},                {N}, {EDB}, lcl_aggr, {BE1,FI1,BE2,FI2,4F0}, lcl_transformation, lcl_unit) UNION && --
+                                    CROSSLIST({BDS},{A},    {CY},                   {N}, {EBR}, lcl_aggr, {CY1,CY2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{A},    {HR},                   {N}, {EBR}, lcl_aggr, {HR1,HR2,4F0}, lcl_transformation, lcl_unit) UNION && 
+                                    CROSSLIST({BDS},{A},    {PT},                   {N}, {EBR}, lcl_aggr, {PT1,PT2,4F0}, lcl_transformation, lcl_unit) UNION && --                                  CROSSLIST({BDS},{M,Q,A},{FR},                   {S}, {EBT}, lcl_aggr, {FR1}, lcl_transformation, lcl_unit) UNION && 
+                                    CROSSLIST({BDS},{A},    {HR,MT,IT,CY},          {N}, {EBT}, lcl_aggr, {HR1,MT1,IT1,CY1,HR2,MT2,IT2,CY2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{Q,A},  {FI},                   {N}, {EBT}, lcl_aggr, {FI1,FI2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{M,Q,A},{FR},                   {N}, {EBT}, lcl_aggr, {FR1,FR2,4F0}, lcl_transformation, lcl_unit) UNION && --        
+                                    CROSSLIST({BDS},{A},    {CY,HR,IT,MT,PT},       {N}, {EDT}, lcl_aggr, {CY1,HR1,IT1,MT1,PT1,CY2,HR2,IT2,MT2,PT2,4F0}, lcl_transformation, lcl_unit) UNION &&
+                                    CROSSLIST({BDS},{Q,A},  {FI},                   {N}, {EDT}, lcl_aggr, {FI1,FI2,4F0}, lcl_transformation, lcl_unit) UNION && --
+                                    CROSSLIST({BDS},{A},    {CY,FR,HR,IT,MT,NL,PT}, {N}, {EST}, lcl_aggr, {CY1,FR1,HR1,IT1,MT1,NL1,PT1,CY2,FR2,HR2,IT2,MT2,NL2,PT2,4F0}, lcl_transformation, lcl_unit) UNION &&                                    
+                                    CROSSLIST({BDS},{Q,A},  {FI},                   {N}, {EST}, lcl_aggr, {FI1,FI2,4F0}, lcl_transformation, lcl_unit))-- UNION &&
+--      CROSSLIST({BDS},lcl_freq,{NL}, {N}, lcl_indic, lcl_aggr, {NL1}, lcl_transformation, lcl_unit))
+   SET lcl_return = SELECTNAMES(lcl_return, NOT EXISTS(BDS_PROD'ID("BDS." + SUBSTRING(name(@NAME),5,999))))   
+--   SET lcl_return = nl(replace(sl(lcl_return),".2.",".3."))?disregard
+   RETURN lcl_return
+END FUNCTION -- $BDS_sect_aggregates.getNames
+--------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------
+PROCEDURE $BDS_sect_aggregates.createFormulaObjs
+ARGUMENT formulaDB, RefArea, baseName, formulaName, formulaSource, compilation, dependencies
+
+   SET formulaName  = replace(replace(BaseName, STRING(SUBSTRING(BaseName, LENGTH(BaseName)-8, LENGTH(BaseName)-6) + "1."),".4F0."), STRING(SUBSTRING(BaseName, LENGTH(BaseName)-8, LENGTH(BaseName)-6) + "2."),".4F0.") -- replace(replace(BaseName,".1.",".3."),".2.",".3.")
+   LOCAL lcl.BTF= {B, C, D, E, F}
+   LOCAL lcl.GTU = {G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U}
+   LOCAL lcl.BTE = {B, C, D, E}
+   LOCAL lcl.GTI = {G, H, I}
+   LOCAL lcl.M_N = {M, N}
+   LOCAL lcl.OTQ = {O, P, Q}
+   LOCAL lcl.RTU = {R, S, T, U}
+   
+   LOCAL lcs_aggregate_to_create=$getMNAdimension(baseName,6) -- E.G. BTF
+   LOCAL lnl_list = CROSSLIST(MAKE(NAMELIST,$getMNAsegment(baseName,1,5)),MAKE(NAMELIST,STRING(lcl & ID(lcs_aggregate_to_create))),MAKE(NAMELIST,$getMNAsegment(baseName,7,3))) 
+   SET lnl_list = SELECTNAMES(lnl_list, EXISTS(BDS_PROD'ID("BDS." + SUBSTRING(name(@NAME),5,999)))) UNION SELECTNAMES(lnl_list, EXISTS(BDS_AGGR'ID("BDS." + SUBSTRING(name(@NAME),5,999))))   
+   --SET lnl_list = SELECTNAMES(lnl_list, EXISTS(BDS_PROD'ID("BDS." + SUBSTRING(name(@NAME),5,999))))
+
+   SET formulasource = "LSUM({" + STRING(lnl_list) + "})"
+   SET compilation = formulaSource
+   SET dependencies = $extract_dependencies(formulaSource) 
+   $DEBUG_PRINT (STRING(formulaName) + " = " + STRING(formulaSource))
+END PROCEDURE -- $BDS_sect_aggregates.createFormulaObjs
