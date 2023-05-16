@@ -1,0 +1,225 @@
+from typing import Dict, Final, List, Optional, Union
+
+import pandas as pd
+
+from space.core import SERIES_KEY
+from space.core.calculation.rules import Operation, Rule, RuleComponent
+from space.core.metadata import get_country_list, get_subset
+from space.core.series import replace
+from space.core.timeseries import crosslist
+
+from space_bds.process.fgen.base import FGENBaseBDS
+from space_bds.process.fgen.constants import (
+    ACTIVITY,
+    DATA_PROVIDER,
+    FGEN_AGGREGATION_TAG,
+    FGEN_SUBSET_AGGREGATION_TAG,
+    PRODUCTION_TYPE_TAGS,
+)
+from space_bds.process_setup.process_constants import DATASET_ID, PROCESS_ID
+
+BDS = PROCESS_ID
+
+DESCRIPTION = "BDS Sector Aggregates"
+
+LCS_AGGREGATES_LISTS: Final[Dict[str, List[str]]] = {
+    "BTF": ["B", "C", "D", "E", "F"],
+    "GTU": ["G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U"],
+    "BTE": ["B", "C", "D", "E"],
+    "GTI": ["G", "H", "I"],
+    "M_N": ["M", "N"],
+    "OTQ": ["O", "P", "Q"],
+    "RTU": ["R", "S", "T", "U"],
+}
+
+
+class FGENBdsSectAggregates(FGENBaseBDS):
+
+    level: int = 2
+
+    @classmethod
+    def create_keys(cls, production_type: str) -> List[str]:
+        aggr = list(LCS_AGGREGATES_LISTS.keys())
+
+        keys = (
+            crosslist([BDS], ["M", "Q", "A"], ["FR"], ["S"], ["EDB"], aggr, ["FR1", "FR2", "4F0"], ["N"], ["PN"])
+            + crosslist(
+                [BDS],
+                ["A"],
+                ["FR", "CY", "NL"],
+                ["N"],
+                ["EDB"],
+                aggr,
+                ["FR1", "CY1", "NL1", "FR2", "CY2", "NL2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist([BDS], ["Q", "A"], ["HR"], ["N"], ["EDB"], aggr, ["HR1", "HR2", "4F0"], ["N"], ["PN"])
+            + crosslist([BDS], ["Q"], ["AT"], ["N"], ["EDB"], aggr, ["AT1", "AT2", "4F0"], ["N"], ["PN"])
+            + crosslist(
+                [BDS],
+                ["M", "A", "Q"],
+                ["BE", "FI"],
+                ["N"],
+                ["EDB"],
+                aggr,
+                ["BE1", "FI1", "BE2", "FI2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist([BDS], ["A"], ["CY"], ["N"], ["EBR"], aggr, ["CY1", "CY2", "4F0"], ["N"], ["PN"])
+            + crosslist([BDS], ["A"], ["HR"], ["N"], ["EBR"], aggr, ["HR1", "HR2", "4F0"], ["N"], ["PN"])
+            + crosslist([BDS], ["A"], ["PT"], ["N"], ["EBR"], aggr, ["PT1", "PT2", "4F0"], ["N"], ["PN"])
+            + crosslist(
+                [BDS],
+                ["A"],
+                ["HR", "MT", "IT", "CY"],
+                ["N"],
+                ["EBT"],
+                aggr,
+                ["HR1", "MT1", "IT1", "CY1", "HR2", "MT2", "IT2", "CY2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist(
+                [BDS],
+                ["Q", "A"],
+                ["FI"],
+                ["N"],
+                ["EBT"],
+                aggr,
+                ["FI1", "FI2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist(
+                [BDS],
+                ["M", "Q", "A"],
+                ["FR"],
+                ["N"],
+                ["EBT"],
+                aggr,
+                ["FR1", "FR2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist(
+                [BDS],
+                ["A"],
+                ["CY", "HR", "IT", "MT", "PT"],
+                ["N"],
+                ["EDT"],
+                aggr,
+                ["CY1", "HR1", "IT1", "MT1", "PT1", "CY2", "HR2", "IT2", "MT2", "PT2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist(
+                [BDS],
+                ["Q", "A"],
+                ["FI"],
+                ["N"],
+                ["EDT"],
+                aggr,
+                ["FI1", "FI2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist(
+                [BDS],
+                ["A"],
+                ["CY", "FR", "HR", "IT", "MT", "NL", "PT"],
+                ["N"],
+                ["EST"],
+                aggr,
+                [
+                    "CY1",
+                    "FR1",
+                    "HR1",
+                    "IT1",
+                    "MT1",
+                    "NL1",
+                    "PT1",
+                    "CY2",
+                    "FR2",
+                    "HR2",
+                    "IT2",
+                    "MT2",
+                    "NL2",
+                    "PT2",
+                    "4F0",
+                ],
+                ["N"],
+                ["PN"],
+            )
+            + crosslist(
+                [BDS],
+                ["Q", "A"],
+                ["FI"],
+                ["N"],
+                ["EST"],
+                aggr,
+                ["FI1", "FI2", "4F0"],
+                ["N"],
+                ["PN"],
+            )
+        )
+        lhs_keys = [replace(key, {DATA_PROVIDER: "4F0"}) for key in keys]
+        return lhs_keys
+
+    @classmethod
+    def create_rules(cls, production_type: str, subsets: Optional[List[str]] = None) -> List[Rule]:
+
+        additional_tags = [PRODUCTION_TYPE_TAGS[production_type]]
+        rule_id_suffix = production_type
+
+        if subsets:
+            lhs_keys = cls.create_keys_from_subsets(subsets)
+            rule_id_suffix = f"{rule_id_suffix}_{','.join(subsets)}"
+            additional_tags = additional_tags + [FGEN_SUBSET_AGGREGATION_TAG]
+        else:
+            lhs_keys = cls.create_keys(production_type)
+            additional_tags = additional_tags + [FGEN_AGGREGATION_TAG]
+
+        return [
+            Rule(
+                id=cls.get_rule_id(suffix=f"{activity}_{rule_id_suffix}"),
+                process_id=PROCESS_ID,
+                dataset=DATASET_ID,
+                lhs=RuleComponent(activity),
+                rhs=[
+                    Operation(
+                        [RuleComponent(aggr) for aggr in LCS_AGGREGATES_LISTS[activity]],
+                        callable_name="ssum",
+                    )
+                ],
+                dimension=ACTIVITY,
+                comparison="eq",
+                description=DESCRIPTION,
+                is_aggregation=True,
+                tags=cls.get_tags() + additional_tags,
+                series_keys={DATASET_ID: lhs_keys},
+            )
+            for activity in list(LCS_AGGREGATES_LISTS.keys())
+        ]
+
+    @classmethod
+    def create_keys_from_subsets(cls, subsets: Union[str, List[str]]) -> List[str]:
+        """Create LHS keys for rules from subsets instead of using the create_keys function
+
+        Parameters
+        ---------
+        subsets : List[str]
+            List of subset names for a certain level
+
+        Returns
+        -------
+        List[str]
+        """
+        subsets_dict = get_subset(dataset_id=DATASET_ID, subset=subsets, prepend_dataset=True)
+        concat_subsets = pd.concat(subsets_dict.values())
+
+        if concat_subsets.empty:
+            return []
+        else:
+            return concat_subsets[SERIES_KEY].unique().tolist()
