@@ -7,7 +7,7 @@
     {
         "instruction": "LOCAL'%SERIES_KEY = IF LOCAL'basename EQ 'Unspecified name.' THEN WORK'%SERIES_KEY ELSE LOCAL'basename",
         "input": "",
-        "output": "if dim == 'Unspecified name.':\n			basename = work.series_key\n  		else:\n    			basename = dim"
+        "output": "if dim == 'Unspecified name.':\n basename = work.series_key \n else:\n basename = dim"
     },
     {
         "instruction": "SERIES LOCAL'DIM_LIST:STRING BY CASE",
