@@ -1,0 +1,50 @@
+[
+    {
+        "instruction": "FUNCTION $EXPANDNAME ARGUMENT %DIM, %NCODES ARGUMENT LOCAL basename='Unspecified name.'",
+        "input": "",
+        "output": "def expand_name(dim, codes): basename='Unspecified name'"
+    },
+    {
+        "instruction": "LOCAL'%SERIES_KEY = IF LOCAL'basename EQ 'Unspecified name.' THEN WORK'%SERIES_KEY ELSE LOCAL'basename",
+        "input": "",
+        "output": "if dim == 'Unspecified name.':
+			basename = work.series_key
+  		else:
+    			basename = dim"
+    },
+    {
+        "instruction": "SERIES LOCAL'DIM_LIST:STRING BY CASE",
+        "input": "",
+        "output": "dim_list = []"
+    },
+    {
+        "instruction": "IF NOT MISSING($GETDIM_NUMBER(%DIM))",
+        "input": "",
+        "output": "if not (GETDIM_NUMBER(DIM))"
+    },
+    {
+        "instruction": "LOCAL'%DIM_NO = $GETDIM_NUMBER(%DIM)",
+        "input": "",
+        "output": "DIM_NO=GETDIM_NUMBER(DIM)"
+    },
+    {
+        "instruction": "SET DIM_LIST[%DIM_NO] = REPLACE(STRING(%NCODES),', ','__')",
+        "input": "",
+        "output": "dim_list[dim_list.index(dim)] = NCODES.replace(', ','__')"
+    },
+    {
+        "instruction": "EXECUTE 'LOCAL'SER_LIST = CROSSLIST({'+REPLACE(REPLACE(STRING(NL(DIM_LIST)),',','},{'),'__',',')+'})'",
+        "input": "",
+        "output": "SER_LIST=DIM_LIST.replace(',','').replace('__',',')."
+    },
+    {
+        "instruction": "RETURN STRING(SER_LIST)",
+        "input": "",
+        "output": "return ser_list"
+    },
+    {
+        "instruction": "RETURN STRING(SER_LIST)",
+        "input": "",
+        "output": "return ser_list"
+    }
+]
